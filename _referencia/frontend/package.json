@@ -1,0 +1,18 @@
+{
+  "name": "frontend-alojamientos",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.0.14"
+  },
+  "dependencies": {
+    "bootstrap": "5.3",
+    "bootstrap-icons": "^1.13.1"
+  }
+}

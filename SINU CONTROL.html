@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es-CO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SINU Control</title>
+<style>
+  :root{--dorado:#C9A24B;--dorado-texto:#7A5B14;--texto:#1A1A1A;--suave:#5F5A52;--borde:#E2DCCF}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--texto);
+       background:radial-gradient(circle at 50% 15%,#FBF5E6 0%,#fff 60%);padding:24px}
+  .caja{max-width:520px;width:100%;text-align:center}
+  img{width:150px;height:150px;border-radius:50%;object-fit:cover;box-shadow:0 8px 40px rgba(201,162,75,.35)}
+  h1{font-family:Georgia,serif;color:var(--dorado-texto);letter-spacing:.06em;margin:.6em 0 .2em}
+  p{color:var(--suave)}
+  .estado{border:1px solid var(--borde);border-radius:14px;padding:16px;margin:18px 0;background:#F7F5F0;text-align:left}
+  .fila{display:flex;justify-content:space-between;padding:6px 0}
+  .ok{color:#2E7D4F;font-weight:700}.no{color:#9A6400;font-weight:700}
+  .btn{display:inline-block;min-height:48px;padding:.7em 1.4em;border-radius:12px;border:1px solid #B8913A;
+       background:var(--dorado);color:var(--texto);font-weight:700;text-decoration:none;font-size:1rem;cursor:pointer}
+  .btn:hover{background:#B8913A}
+  code{background:#EFEBE2;padding:.1em .4em;border-radius:6px}
+  .ayuda{font-size:.9rem;display:none}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--dorado);border-right-color:transparent;
+           border-radius:50%;animation:g 1s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes g{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="caja">
+  <img src="frontend/src/assets/logo-sinu.jpg" alt="Sinu Gastrobar" onerror="this.style.display='none'">
+  <h1>SINU CONTROL</h1>
+  <p id="msg"><span class="spinner"></span>Conectando con el sistema…</p>
+  <div class="estado">
+    <div class="fila"><span>API (puerto 5000)</span><span id="api" class="no">esperando…</span></div>
+    <div class="fila"><span>Aplicación (puerto 5173)</span><span id="web" class="no">esperando…</span></div>
+  </div>
+  <a class="btn" href="http://localhost:5173">Entrar a SINU Control</a>
+  <p class="ayuda" id="ayuda">¿Sigue esperando? Haga doble clic en <code>INICIAR SINU.bat</code>
+  (está en esta misma carpeta) para encender el sistema.<br>Usuarios: <b>admin</b> / admin123 · <b>mesero</b> / mesero123</p>
+</div>
+<script>
+// Un archivo HTML no puede encender programas; esta página espera a que el
+// lanzador (INICIAR SINU.bat) arranque la API y el frontend y luego entra sola.
+const URL_API = 'http://localhost:5000/health';
+const URL_WEB = 'http://localhost:5173/';
+async function arriba(url) {
+  try { await fetch(url, { mode: 'no-cors', cache: 'no-store' }); return true; }
+  catch { return false; }
+}
+let intentos = 0;
+async function revisar() {
+  intentos++;
+  const [api, web] = await Promise.all([arriba(URL_API), arriba(URL_WEB)]);
+  for (const [id, ok] of [['api', api], ['web', web]]) {
+    const el = document.getElementById(id);
+    el.textContent = ok ? 'encendida' : 'esperando…';
+    el.className = ok ? 'ok' : 'no';
+  }
+  if (api && web) {
+    document.getElementById('msg').textContent = 'Sistema listo. Entrando…';
+    setTimeout(() => location.href = URL_WEB, 600);
+    return;
+  }
+  if (intentos > 5) document.getElementById('ayuda').style.display = 'block';
+  setTimeout(revisar, 1500);
+}
+revisar();
+</script>
+</body>
+</html>

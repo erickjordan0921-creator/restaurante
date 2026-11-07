@@ -1,0 +1,9 @@
+# Dependencias opcionales para desarrollo: formateo, lint y calidad de código.
+# Instalar con: pip install -r requirements-dev.txt
+-r requirements.txt
+
+# Formateador de código
+black==25.1.0
+
+# Linter rápido y moderno (reemplaza flake8, isort, pylint en muchos casos)
+ruff==0.12.2

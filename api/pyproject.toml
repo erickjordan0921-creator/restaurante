@@ -1,0 +1,37 @@
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+exclude = '''
+/(
+    \.git
+  | venv
+  | __pycache__
+  | migrations
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    "venv",
+    "migrations",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # Pyflakes (errores de import, variables no usadas, etc.)
+    "I",     # isort (orden de imports)
+    "UP",    # pyupgrade (sintaxis moderna de Python)
+    "B",     # flake8-bugbear (errores comunes y bugs potenciales)
+    "SIM",   # flake8-simplify (simplificaciones de código)
+    "RUF",   # reglas propias de Ruff
+]
+ignore = [
+    "E501",  # la longitud de línea ya la controla black
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]

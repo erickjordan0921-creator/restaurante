@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sinu-api",
+      "runtimeExecutable": "C:/Users/PC/proyecto-sinu/api/venv/Scripts/python.exe",
+      "runtimeArgs": ["C:/Users/PC/proyecto-sinu/api/app.py"],
+      "port": 5000
+    },
+    {
+      "name": "sinu-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Users/PC/proyecto-sinu/frontend", "run", "dev", "--", "--port", "5173", "--strictPort"],
+      "port": 5173
+    }
+  ]
+}

@@ -1,0 +1,961 @@
+{
+  "info": {
+    "name": "Alojamientos API - Validación Manual",
+    "description": "Colección completa para probar todos los endpoints de la API Alojamientos.\n\n## Instrucciones de uso\n1. Importa esta colección en Postman: File → Import → File → selecciona este archivo.\n2. Crea un **Environment** con las siguientes variables:\n   - `baseUrl`: `http://localhost:5000`\n   - `token_normal`: (se captura del login del usuario normal)\n   - `token_admin`: (se captura del login del admin)\n   - `alojamiento_id`: (se captura al crear un alojamiento)\n   - `comodidad_id`: (se captura al crear una comodidad)\n   - `alojamiento_casa_id`: (para pruebas de relación N:M)\n3. Sigue los endpoints en orden numerado (01, 02, 03...) para que los tokens e IDs se capturen automáticamente.\n4. Usa la pestaña **Tests** de cada request para capturar tokens e IDs en las variables de entorno.\n\n## Orden recomendado de ejecución\n01. Health Check\n02. Registro de usuarios\n03. Login y captura de tokens\n04. Promover admin (vía terminal)\n05. Perfil de usuario\n06. Autorización admin\n07. Alojamientos CRUD\n08. Comodidades CRUD\n09. Relación N:M\n10. Validaciones de error",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Health Check",
+      "description": "Verifica que el servidor está respondiendo correctamente. No requiere autenticación.",
+      "item": [
+        {
+          "name": "GET /health",
+          "description": "Endpoint de salud. Debe responder 200 con {\"status\":\"ok\"}.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body: {\"status\":\"ok\",\"service\":\"alojamientos-api\",\"version\":\"v1\"}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Usuarios: Registro",
+      "description": "Endpoints de registro de usuarios. Públicos, no requieren autenticación.",
+      "item": [
+        {
+          "name": "01.1 Registrar usuario normal",
+          "description": "Registra un nuevo usuario con correo y contraseña. El perfil se crea vacío.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"normal@test.com\",\n  \"contrasena\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/registro",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "registro"]
+            },
+            "description": "Respuesta esperada:\n- Status: 201 Created\n- Body: {\"success\":true,\"data\":{\"id\":1,\"correo\":\"normal@test.com\"}}\n\nNota: El usuario_id se usará para login posterior."
+          }
+        },
+        {
+          "name": "01.2 Registrar usuario admin",
+          "description": "Registra el usuario que luego se promoverá a administrador.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"admin@test.com\",\n  \"contrasena\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/registro",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "registro"]
+            },
+            "description": "Respuesta esperada:\n- Status: 201 Created\n- Body: {\"success\":true,\"data\":{\"id\":2,\"correo\":\"admin@test.com\"}}"
+          }
+        },
+        {
+          "name": "01.3 Registro duplicado (esperado 400)",
+          "description": "Intenta registrar un correo que ya existe. Debe fallar con 400.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"normal@test.com\",\n  \"contrasena\": \"otraclave\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/registro",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "registro"]
+            },
+            "description": "Respuesta esperada:\n- Status: 400 Bad Request\n- Body: {\"success\":false,\"error\":{\"message\":\"El correo normal@test.com ya esta registrado.\"}}"
+          }
+        },
+        {
+          "name": "01.4 Contrasena corta (esperado 400)",
+          "description": "Intenta registrar con contraseña menor a 6 caracteres.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"corta@test.com\",\n  \"contrasena\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/registro",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "registro"]
+            },
+            "description": "Respuesta esperada:\n- Status: 400\n- Error: \"Shorter than minimum length 6.\""
+          }
+        },
+        {
+          "name": "01.5 Email inválido (esperado 400)",
+          "description": "Intenta registrar con un formato de email inválido.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"no-es-email\",\n  \"contrasena\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/registro",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "registro"]
+            },
+            "description": "Respuesta esperada:\n- Status: 400\n- Error: \"Not a valid email address.\""
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Usuarios: Login y Tokens",
+      "description": "Endpoints de login para obtener tokens JWT. Los tokens se guardan en las variables de entorno para uso posterior.",
+      "item": [
+        {
+          "name": "02.1 Login usuario normal",
+          "description": "Obtiene el token JWT del usuario normal. IMPORTANTE: Copia el access_token de la respuesta y guárdalo en la variable de entorno `token_normal`.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"normal@test.com\",\n  \"contrasena\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "login"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body incluye `access_token` y datos del usuario con `rol: \"usuario\"`\n\n⚠️ IMPORTANTE: Copia el valor de `access_token` y guárdalo en la variable de entorno `token_normal`."
+          }
+        },
+        {
+          "name": "02.2 Login admin (antes de promover)",
+          "description": "Login del admin ANTES de promoverlo. El rol aún será 'usuario'.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"admin@test.com\",\n  \"contrasena\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "login"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body incluye `access_token` con `rol: \"usuario\"` (aún no es admin)\n\n⚠️ Copia el token en `token_admin`, pero luego deberás hacer login nuevamente después de promover."
+          }
+        },
+        {
+          "name": "02.3 Login con contraseña incorrecta (esperado 401)",
+          "description": "Intenta login con contraseña incorrecta. Debe fallar con 401.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"normal@test.com\",\n  \"contrasena\": \"contrasena-incorrecta\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "login"]
+            },
+            "description": "Respuesta esperada:\n- Status: 401 Unauthorized\n- Body: {\"success\":false,\"error\":{\"message\":\"Credenciales invalidas.\"}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Usuarios: Perfil",
+      "description": "Endpoints de consulta y actualización del perfil del usuario autenticado.",
+      "item": [
+        {
+          "name": "03.1 Perfil sin token (esperado 401)",
+          "description": "Intenta ver el perfil sin autenticación. Debe fallar.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/perfil",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "perfil"]
+            },
+            "description": "Respuesta esperada:\n- Status: 401 Unauthorized\n- Body: {\"success\":false,\"error\":{\"message\":\"Token no proporcionado.\"}}"
+          }
+        },
+        {
+          "name": "03.2 Perfil con token normal",
+          "description": "Consulta el perfil del usuario normal. Los campos estarán en null hasta que se actualicen.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/perfil",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "perfil"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body: {\"data\":{\"id\":1,\"nombre\":null,\"apellido\":null,\"telefono\":null,\"usuario_id\":1}}"
+          }
+        },
+        {
+          "name": "03.3 Actualizar perfil",
+          "description": "Actualiza nombre, apellido y teléfono del perfil. Actualización parcial: solo se modifican los campos enviados.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Juan\",\n  \"apellido\": \"Perez\",\n  \"telefono\": \"555-1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/perfil",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "perfil"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body: {\"data\":{\"id\":1,\"nombre\":\"Juan\",\"apellido\":\"Perez\",\"telefono\":\"555-1234\",\"usuario_id\":1}}"
+          }
+        },
+        {
+          "name": "03.4 Verificar perfil actualizado",
+          "description": "Consulta el perfil nuevamente para verificar que los cambios persisten.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/usuarios/perfil",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "usuarios", "perfil"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body debe mostrar nombre=\"Juan\", apellido=\"Perez\", telefono=\"555-1234\""
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Admin: Autorización",
+      "description": "Endpoints administrativos. Requieren rol de administrador.\n\n⚠️ ANTES DE PROBAR: Ejecuta en terminal:\npython scripts/promover_admin.py admin@test.com\n\nLuego vuelve a hacer login con el admin para obtener un token con rol=admin.",
+      "item": [
+        {
+          "name": "04.1 Admin sin token (esperado 401)",
+          "description": "Intenta acceder al endpoint de admin sin autenticación.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "usuarios"]
+            },
+            "description": "Respuesta esperada:\n- Status: 401\n- Error: \"Token no proporcionado.\""
+          }
+        },
+        {
+          "name": "04.2 Admin con usuario normal (esperado 403)",
+          "description": "Intenta acceder como usuario normal (sin rol admin). Debe ser denegado.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "usuarios"]
+            },
+            "description": "Respuesta esperada:\n- Status: 403 Forbidden\n- Error: \"Permiso denegado. Se requiere rol de administrador.\""
+          }
+        },
+        {
+          "name": "04.3 Admin con token de admin",
+          "description": "Accede como administrador. Debe mostrar lista de usuarios sin contraseñas.\n\n⚠️ Asegúrate de que `token_admin` sea de un usuario con rol=admin (ejecuta promover_admin.py y vuelve a hacer login).",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "usuarios"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body: Lista de usuarios con id, correo, fecha_creacion, rol (SIN contrasena)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Alojamientos: CRUD",
+      "description": "Endpoints de alojamientos. Incluye pruebas de autorización por propietario y admin.",
+      "item": [
+        {
+          "name": "05.1 Crear sin token (esperado 401)",
+          "description": "Intenta crear alojamiento sin autenticación.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"X\",\n  \"descripcion\": \"X\",\n  \"precio_noche\": 50,\n  \"ciudad\": \"X\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos"]
+            },
+            "description": "Respuesta esperada:\n- Status: 401\n- Error: \"Token no proporcionado.\""
+          }
+        },
+        {
+          "name": "05.2 Crear alojamiento (usuario normal)",
+          "description": "Crea un alojamiento como usuario normal. IMPORTANTE: Guarda el `id` de la respuesta en la variable `alojamiento_id`.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Cabanita Andina\",\n  \"descripcion\": \"Hermosa cabana con vista al volcan\",\n  \"precio_noche\": 85.50,\n  \"ciudad\": \"Quito\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos"]
+            },
+            "description": "Respuesta esperada:\n- Status: 201 Created\n- Body incluye `id`, `titulo`, `precio_noche`, `ciudad`, `comodidades: []`\n\n⚠️ IMPORTANTE: Copia el valor de `id` y guárdalo en la variable de entorno `alojamiento_id`."
+          }
+        },
+        {
+          "name": "05.3 Listar alojamientos (público)",
+          "description": "Lista todos los alojamientos. No requiere autenticación.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body: Lista de alojamientos con todos sus campos"
+          }
+        },
+        {
+          "name": "05.4 Detalle de alojamiento (público)",
+          "description": "Obtiene el detalle de un alojamiento específico por ID.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/{{alojamiento_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "{{alojamiento_id}}"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body: Detalle completo del alojamiento"
+          }
+        },
+        {
+          "name": "05.5 Detalle inexistente (esperado 404)",
+          "description": "Intenta ver un alojamiento que no existe.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/99999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "99999"]
+            },
+            "description": "Respuesta esperada:\n- Status: 404\n- Error: \"Alojamiento con id 99999 no encontrado.\""
+          }
+        },
+        {
+          "name": "05.6 Crear alojamiento para pruebas de autorización (admin)",
+          "description": "El admin crea un alojamiento para luego probar que el usuario normal NO puede editarlo.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Casa del Admin\",\n  \"descripcion\": \"Propiedad del administrador\",\n  \"precio_noche\": 100,\n  \"ciudad\": \"Bogota\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos"]
+            },
+            "description": "Respuesta esperada:\n- Status: 201 Created\n- Guarda el `id` para las pruebas de autorización"
+          }
+        },
+        {
+          "name": "05.7 Actualizar alojamiento ajeno (esperado 403)",
+          "description": "El usuario normal intenta editar un alojamiento que no es suyo. Debe ser denegado.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Hackeado\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/{{alojamiento_id_admin}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "{{alojamiento_id_admin}}"]
+            },
+            "description": "Respuesta esperada:\n- Status: 403\n- Error: \"Permiso denegado. Solo el propietario o un administrador pueden editar este alojamiento.\"\n\n⚠️ Nota: Reemplaza {{alojamiento_id_admin}} con el ID del alojamiento creado por el admin."
+          }
+        },
+        {
+          "name": "05.8 Eliminar alojamiento ajeno (esperado 403)",
+          "description": "El usuario normal intenta eliminar un alojamiento ajeno. Debe ser denegado.",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/{{alojamiento_id_admin}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "{{alojamiento_id_admin}}"]
+            },
+            "description": "Respuesta esperada:\n- Status: 403\n- Error: \"Permiso denegado...\""
+          }
+        },
+        {
+          "name": "05.9 Actualizar alojamiento propio",
+          "description": "El usuario edita SU PROPIO alojamiento. Debe ser permitido.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Cabanita Editada\",\n  \"precio_noche\": 95.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/{{alojamiento_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "{{alojamiento_id}}"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body: Alojamiento actualizado con nuevo titulo y precio"
+          }
+        },
+        {
+          "name": "05.10 Admin actualiza alojamiento ajeno",
+          "description": "El admin edita un alojamiento que NO es suyo. Debe ser permitido (admin tiene privilegios totales).",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Editado por Admin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/{{alojamiento_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "{{alojamiento_id}}"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body: Alojamiento con titulo actualizado"
+          }
+        },
+        {
+          "name": "05.11 Eliminar alojamiento propio",
+          "description": "El usuario elimina SU PROPIO alojamiento.",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/{{alojamiento_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "{{alojamiento_id}}"]
+            },
+            "description": "Respuesta esperada:\n- Status: 204 No Content\n- Sin body"
+          }
+        },
+        {
+          "name": "05.12 Admin elimina alojamiento ajeno",
+          "description": "El admin elimina un alojamiento que NO es suyo.",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/{{alojamiento_id_admin}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "{{alojamiento_id_admin}}"]
+            },
+            "description": "Respuesta esperada:\n- Status: 204 No Content\n- Sin body"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Comodidades: CRUD",
+      "description": "Endpoints de comodidades. Solo el admin puede crear comodidades (catálogo global).",
+      "item": [
+        {
+          "name": "06.1 Crear comodidad con usuario normal (esperado 403)",
+          "description": "El usuario normal intenta crear una comodidad. Debe ser denegado (solo admin).",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Wifi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/comodidades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "comodidades"]
+            },
+            "description": "Respuesta esperada:\n- Status: 403\n- Error: \"Permiso denegado. Se requiere rol de administrador.\""
+          }
+        },
+        {
+          "name": "06.2 Crear comodidad con admin",
+          "description": "El admin crea una comodidad. IMPORTANTE: Guarda el `id` en la variable `comodidad_id`.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Wifi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/comodidades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "comodidades"]
+            },
+            "description": "Respuesta esperada:\n- Status: 201 Created\n- Body: {\"data\":{\"id\":1,\"nombre\":\"Wifi\"}}\n\n⚠️ IMPORTANTE: Copia el `id` y guárdalo en la variable `comodidad_id`."
+          }
+        },
+        {
+          "name": "06.3 Comodidad duplicada (esperado 400)",
+          "description": "Intenta crear una comodidad con nombre que ya existe.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Wifi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/comodidades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "comodidades"]
+            },
+            "description": "Respuesta esperada:\n- Status: 400\n- Error: \"Ya existe una comodidad con el nombre Wifi.\""
+          }
+        },
+        {
+          "name": "06.4 Crear segunda comodidad",
+          "description": "Crea una segunda comodidad para pruebas de relación N:M.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Piscina\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/comodidades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "comodidades"]
+            },
+            "description": "Respuesta esperada:\n- Status: 201 Created\n- Guarda el `id` para usarlo en la relación N:M"
+          }
+        },
+        {
+          "name": "06.5 Listar comodidades (público)",
+          "description": "Lista todas las comodidades. No requiere autenticación.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/comodidades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "comodidades"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body: Lista de comodidades con id y nombre"
+          }
+        },
+        {
+          "name": "06.6 Detalle de comodidad (público)",
+          "description": "Obtiene el detalle de una comodidad específica.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/comodidades/{{comodidad_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "comodidades", "{{comodidad_id}}"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body: {\"data\":{\"id\":1,\"nombre\":\"Wifi\"}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Relación N:M: Alojamientos ↔ Comodidades",
+      "description": "Endpoints para asignar comodidades a un alojamiento. Relación muchos a muchos.",
+      "item": [
+        {
+          "name": "07.1 Crear alojamiento para pruebas N:M",
+          "description": "Crea un alojamiento nuevo que usaremos para asignarle comodidades.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Casa Playa\",\n  \"descripcion\": \"Frente al mar\",\n  \"precio_noche\": 120,\n  \"ciudad\": \"Cartagena\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos"]
+            },
+            "description": "Respuesta esperada:\n- Status: 201 Created\n- Guarda el `id` en la variable `alojamiento_casa_id`"
+          }
+        },
+        {
+          "name": "07.2 Asignar comodidades al alojamiento",
+          "description": "Asigna una o más comodidades a un alojamiento. Reemplaza la lista completa.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comodidades_ids\": [1, 2]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/{{alojamiento_casa_id}}/comodidades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "{{alojamiento_casa_id}}", "comodidades"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body incluye `comodidades: [{\"id\":1,\"nombre\":\"Wifi\"},{\"id\":2,\"nombre\":\"Piscina\"}]`\n\n⚠️ Reemplaza [1, 2] con los IDs reales de tus comodidades."
+          }
+        },
+        {
+          "name": "07.3 Verificar comodidades en el detalle",
+          "description": "Consulta el detalle del alojamiento para verificar que las comodidades aparecen.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/{{alojamiento_casa_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "{{alojamiento_casa_id}}"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body debe incluir `comodidades: [...]` con las comodidades asignadas"
+          }
+        },
+        {
+          "name": "07.4 Asignar ID inexistente (esperado 400)",
+          "description": "Intenta asignar una comodidad que no existe. Debe fallar.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comodidades_ids\": [99999]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/{{alojamiento_casa_id}}/comodidades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "{{alojamiento_casa_id}}", "comodidades"]
+            },
+            "description": "Respuesta esperada:\n- Status: 400\n- Error: \"Las comodidades con ids [99999] no existen.\""
+          }
+        },
+        {
+          "name": "07.5 Vaciar comodidades del alojamiento",
+          "description": "Elimina todas las comodidades del alojamiento enviando una lista vacía.",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comodidades_ids\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos/{{alojamiento_casa_id}}/comodidades",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos", "{{alojamiento_casa_id}}", "comodidades"]
+            },
+            "description": "Respuesta esperada:\n- Status: 200 OK\n- Body: `comodidades: []` (lista vacía)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Validaciones de Error",
+      "description": "Pruebas de validación de datos de entrada. Todos deben responder 400.",
+      "item": [
+        {
+          "name": "08.1 Crear alojamiento sin campos (esperado 400)",
+          "description": "Intenta crear un alojamiento con body vacío.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos"]
+            },
+            "description": "Respuesta esperada:\n- Status: 400\n- Error detalla campos faltantes: titulo, descripcion, precio_noche, ciudad"
+          }
+        },
+        {
+          "name": "08.2 Precio negativo (esperado 400)",
+          "description": "Intenta crear un alojamiento con precio negativo.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_normal}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Casa\",\n  \"descripcion\": \"Descripcion\",\n  \"precio_noche\": -10,\n  \"ciudad\": \"Lima\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/alojamientos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "alojamientos"]
+            },
+            "description": "Respuesta esperada:\n- Status: 400\n- Error: \"Must be greater than or equal to 0.01.\""
+          }
+        }
+      ]
+    }
+  ]
+}

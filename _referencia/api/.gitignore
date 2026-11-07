@@ -1,0 +1,19 @@
+# Entorno Virtual de Python
+venv/
+
+# Archivo de variables de entorno (contiene secretos)
+.env
+
+# Cache de Python
+__pycache__/
+.pytest_cache/
+
+# Archivos de base de datos de SQLite (si se usara en el futuro)
+*.sqlite3
+
+# Imagenes subidas por usuarios (no se versionan)
+uploads/*
+!uploads/.gitkeep
+
+# Cache de herramientas de desarrollo
+.ruff_cache/
